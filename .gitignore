@@ -1,0 +1,35 @@
+# --- Cloudron/agent working files (never publish) ---
+.claude/
+scratchpad/
+*.local
+*.local.md
+docs/*.local.md
+
+# --- Per-phase handoff / working notes (local-only, never published) ---
+phase-notes/
+
+# --- Upstream source checkout (investigation only; never built-from-here, never published) ---
+upstream-lmnr/
+
+# --- Local-only planning + reference docs (box-specific hostnames/identities; never published) ---
+laminar-cloudron-foundation.md
+cloudron-packaging-field-guide-*.md
+
+# --- Logo working files (logo.png is the tracked, canonical copy) ---
+logo-src/
+
+# --- Secrets / tokens (defensive; real tokens live OUTSIDE the repo) ---
+.anonymize-list
+*token*.txt
+*.secret
+*.secrets
+.env
+.env.*
+!.env.example
+
+# --- Build / OS cruft ---
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+*.tmp

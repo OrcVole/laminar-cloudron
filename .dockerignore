@@ -1,0 +1,28 @@
+# The build context needs only what the Dockerfile COPYs (start.sh, conf/, supervisor/). Everything else
+# is excluded so no local-only/secret file leaks into the image, and the multi-GB upstream-lmnr/ checkout
+# never bloats the context (app-server source is git-cloned inside the builder; the frontend, ClickHouse,
+# and Quickwit come from pinned upstream images).
+.git/
+.gitignore
+.dockerignore
+.claude/
+scratchpad/
+upstream-lmnr/
+docs/
+test/
+phase-notes/
+logo-src/
+*.md
+LICENSE
+CloudronManifest.json
+CloudronVersions.json
+laminar-cloudron-foundation.md
+cloudron-packaging-field-guide-*.md
+logo.png
+*token*.txt
+*.secret
+*.secrets
+.env
+.env.*
+*.local
+*.local.md

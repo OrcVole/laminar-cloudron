@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!-- Upstream lmnr profile (clickhouse-profiles-config.xml) + a read-only profile for laminar_ro.
+     Merged into ClickHouse's default users.xml (users.d/*.xml auto-loaded). -->
+<clickhouse>
+    <profiles>
+        <default>
+            <!-- Laminar ingests timestamps in mixed formats; best_effort parsing is required (upstream). -->
+            <date_time_input_format replace="replace">best_effort</date_time_input_format>
+        </default>
+        <readonly>
+            <!-- readonly=2: SELECT + server-applied session SETTINGS (the SQL endpoint's per-query
+                 max_execution_time / max_memory_usage caps), but no INSERT/DDL. The query-engine validator
+                 is the primary SELECT-only gate; this is defence in depth for laminar_ro. -->
+            <readonly>2</readonly>
+        </readonly>
+    </profiles>
+</clickhouse>

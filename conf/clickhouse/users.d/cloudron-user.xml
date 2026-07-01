@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Two users: rw `laminar` (ingest + boot migrations; access_management) and ro `laminar_ro` (the ad-hoc
+     SQL endpoint's security boundary — set BOTH CLICKHOUSE_RO_USER and _PASSWORD or app-server silently
+     disables the SQL/AI read path). Passwords are read from env at CH startup (start.sh seeds them once
+     into /app/data/.secrets) so they are never baked into the image. -->
+<clickhouse>
+    <users>
+        <laminar>
+            <password from_env="CLICKHOUSE_PASSWORD"/>
+            <networks><ip>127.0.0.1</ip><ip>::1</ip></networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+            <named_collection_control>1</named_collection_control>
+        </laminar>
+        <laminar_ro>
+            <password from_env="CLICKHOUSE_RO_PASSWORD"/>
+            <networks><ip>127.0.0.1</ip><ip>::1</ip></networks>
+            <profile>readonly</profile>
+            <quota>default</quota>
+        </laminar_ro>
+    </users>
+</clickhouse>

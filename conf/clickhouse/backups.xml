@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- Lets `clickhouse local` write/read File backups under /app/data (the Cloudron-backed-up dir). Used
+     ONLY by backup-clickhouse.sh / restore-clickhouse.sh in the temporary backup/restore container. -->
+<clickhouse>
+    <backups>
+        <allowed_path>/app/data</allowed_path>
+    </backups>
+</clickhouse>

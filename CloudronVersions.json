@@ -1,0 +1,63 @@
+{
+  "stable": true,
+  "versions": {
+    "0.1.4": {
+      "manifest": {
+        "id": "io.github.orcvole.laminar",
+        "title": "Laminar",
+        "author": "OrcVole",
+        "tagline": "Open-source observability for LLM apps and AI agents",
+        "description": "## Laminar\n\nLaminar (`lmnr`) is an open-source observability platform for LLM applications and AI agents:\nOpenTelemetry-native tracing, evaluations, datasets, labelling queues, full-text span search, and SQL\naccess to all of your trace data.\n\nThis package runs the self-hosted **open-source (Apache-2.0)** Laminar stack as a single Cloudron app — the\nNext.js dashboard, the Rust ingestion/API server, and bundled ClickHouse (span analytics) and Quickwit\n(full-text search) — with PostgreSQL provided by the Cloudron addon.\n\n### What you get\n\n- **OpenTelemetry-native trace ingestion** over OTLP/HTTP, plus the Laminar Python/TypeScript SDKs.\n- **Trace & span explorer** with full-text search, a SQL editor, and dashboards.\n- **Evaluations, datasets, and labelling queues** for building and grading eval pipelines.\n- **Single sign-on** via the Cloudron OIDC addon (Better Auth), or passwordless local sign-in.\n- All trace data stays on your own server; nothing is sent to a third party.\n\n### Cloudron integration\n\nSign-in through Cloudron SSO (OIDC) when enabled; automatic backups of all state under `/app/data`;\none-click updates; per-project API keys for SDK and OpenTelemetry-collector ingestion on a dedicated\ningestion subdomain.\n",
+        "changelog": "[0.1.4]\n* Hardened backups: the bundled ClickHouse and Quickwit stores now live on dedicated volumes and are captured\n  by a consistent logical dump/restore, so automatic backups can't race live writes or abort mid-run.\n* Right-sized memory: 4 GiB default with an internal ClickHouse cap, measured for small/personal installs.\n* Trace ingestion is OTLP/HTTP only (protobuf or JSON) — simpler and a smaller attack surface than gRPC.\n* Ingestion is traces-only; the endpoint requires TLS (send OTLP/HTTP over `https`, not cleartext).\n* Added a pre-publish secret-scan release gate.\n\n[0.1.0]\n* Initial release: Laminar 0.2.0 (open-source LITE profile) packaged for Cloudron.\n* Next.js dashboard (Better Auth) + Rust app-server (OTLP/HTTP + REST ingestion) + bundled ClickHouse and Quickwit; PostgreSQL via the Cloudron addon.\n* App-native OIDC single sign-on through the Cloudron oidc addon; passwordless local-email sign-in when SSO is off.\n* Trace ingestion on a dedicated subdomain, secured by per-project API keys.\n* Data-loss-critical encryption key generated once and preserved across updates and restores.\n",
+        "icon": "file://logo.png",
+        "tags": [
+          "observability",
+          "tracing",
+          "ai",
+          "analytics"
+        ],
+        "version": "0.1.4",
+        "upstreamVersion": "0.2.0",
+        "healthCheckPath": "/sign-in",
+        "httpPort": 5667,
+        "httpPorts": {
+          "LAMINAR_INGEST_FQDN": {
+            "title": "Trace ingestion endpoint",
+            "description": "OTLP/HTTP + REST trace ingestion (app-server :8000) on its own subdomain. Public — NOT behind Cloudron login; secured by per-project API keys (SDKs and OTLP collectors cannot complete an interactive login). Point your Laminar SDK / OTLP exporter baseUrl here.",
+            "containerPort": 8000,
+            "defaultValue": "laminar-ingest"
+          }
+        },
+        "addons": {
+          "localstorage": {},
+          "postgresql": {},
+          "oidc": {
+            "loginRedirectUri": "/api/auth/callback/keycloak"
+          }
+        },
+        "persistentDirs": [
+          "/var/lib/clickhouse",
+          "/var/lib/quickwit"
+        ],
+        "backupCommand": "/app/code/conf/backup-clickhouse.sh",
+        "restoreCommand": "/app/code/conf/restore-clickhouse.sh",
+        "memoryLimit": 4294967296,
+        "configurePath": "/",
+        "optionalSso": true,
+        "postInstallMessage": "## Laminar is installed 🎉\n\n**First sign-in**\n\n- Open the app and create your account. With **Cloudron SSO (OIDC)** enabled, sign in with your Cloudron\n  account. With SSO disabled, sign-in is **passwordless local-email** — anyone who can reach the app can\n  sign in, so keep SSO on (or otherwise restrict access) for a private instance.\n\n**Sending traces**\n\n- Your trace-ingestion endpoint is the **ingestion subdomain** (a separate subdomain from the dashboard,\n  chosen at install). Point your Laminar SDK or OTLP/HTTP exporter `baseUrl` there.\n- Create a project in the UI to obtain a **project API key**, and send it as the ingestion credential.\n- Ingestion is **OTLP/HTTP** for **traces** (`POST /v1/traces`). From an OpenTelemetry collector or an LLM\n  gateway, use the **HTTP/protobuf** exporter (not gRPC) and make sure it negotiates **TLS** to the `https`\n  endpoint. Metrics/logs exporters aren't accepted (a `/v1/metrics` POST just 404s harmlessly).\n- The endpoint is **HTTPS-only — your exporter must actually speak TLS.** Some OTLP exporters and LLM\n  gateways have a \"plaintext HTTP\" export mode that sends **cleartext even to an `https://` URL**; those get a\n  proxy **`400 — plain HTTP request was sent to HTTPS port`** and never reach the app. If your client can't do\n  real TLS to the endpoint, put a local **OTLP collector** in front as a TLS relay (exporter → collector in\n  plaintext → collector → `https` to the ingest endpoint with your API key).\n\n**Data & backups**\n\n- All state — PostgreSQL (addon), the bundled ClickHouse and Quickwit stores, and the encryption key — is\n  captured by Cloudron's automatic backups. The data-encryption key is generated once on first boot and\n  preserved across updates and restores, so existing encrypted values (stored API keys, provider secrets)\n  keep working. Do not reinstall fresh if you want to keep existing data.\n\nProject homepage: https://www.lmnr.ai — Docs: https://docs.lmnr.ai\n",
+        "manifestVersion": 2,
+        "minBoxVersion": "9.1.0",
+        "website": "https://www.lmnr.ai",
+        "documentationUrl": "https://docs.lmnr.ai",
+        "packagerName": "OrcVole",
+        "packagerUrl": "https://github.com/OrcVole/laminar-cloudron",
+        "contactEmail": "Most+github@OrcadianVole.com",
+        "iconUrl": "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png",
+        "mediaLinks": [
+          "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png"
+        ],
+        "dockerImage": "ghcr.io/orcvole/laminar-cloudron@sha256:729fae449afc99ddd6d37657797695754c7372509ff4ba844f017ef3ba7a8e8f"
+      }
+    }
+  }
+}

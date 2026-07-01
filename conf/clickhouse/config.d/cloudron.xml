@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<!-- Cloudron overrides merged over ClickHouse's default config.xml (config.d/*.xml is auto-loaded).
+     ADR 0007: the CH store lives on the **persistentDir** /var/lib/clickhouse (NOT /app/data), so it is
+     excluded from Cloudron's rsync file-walk and cannot race the syncer (#46). Its consistent logical
+     dump (backup-clickhouse.sh) is what rides the backup, under /app/data. Logs go to stdout; bind
+     localhost only. -->
+<clickhouse>
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+    <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+    <user_directories>
+        <users_xml><path>users.xml</path></users_xml>
+        <local_directory><path>/var/lib/clickhouse/access/</path></local_directory>
+    </user_directories>
+
+    <!-- Default file logs go to read-only /var/log; redirect under the persistentDir and echo to stdout
+         (Cloudron captures stdout/stderr). Logs are not backup-critical (the persistentDir is not walked). -->
+    <logger>
+        <console>1</console>
+        <level>warning</level>
+        <log>/var/lib/clickhouse/logs/clickhouse-server.log</log>
+        <errorlog>/var/lib/clickhouse/logs/clickhouse-server.err.log</errorlog>
+        <size>100M</size>
+        <count>3</count>
+    </logger>
+
+    <!-- localhost only: Laminar connects via localhost; the docker_related_config.xml that forces
+         0.0.0.0/:: is removed at build time (Dockerfile). listen_try avoids a hard fail if v6 is off. -->
+    <listen_host>127.0.0.1</listen_host>
+    <listen_host>::1</listen_host>
+    <listen_try>1</listen_try>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    <!-- single-node embedded ClickHouse: drop surfaces Laminar never uses -->
+    <interserver_http_port remove="1"/>
+    <mysql_port remove="1"/>
+    <postgresql_port remove="1"/>
+
+    <!-- Laminar's spans views + DateTime64(_, 'UTC') columns assume UTC. -->
+    <timezone>UTC</timezone>
+
+    <!-- Absolute cap, NOT a ratio (unverified whether bundled CH reads the cgroup limit or host RAM).
+         COUPLED to the manifest memoryLimit (ADR 0009): 2 GiB cap under a 4 GiB limit; lower both together. -->
+    <max_server_memory_usage>2147483648</max_server_memory_usage>
+    <mark_cache_size>536870912</mark_cache_size>
+
+    <!-- ADR 0007: File backups/restores sandboxed to /app/data. The restoreCommand brings up a transient
+         server that uses THIS config, so it needs allowed_path here (the backup's `clickhouse local` reads
+         it from the standalone backups.xml instead). -->
+    <backups>
+        <allowed_path>/app/data</allowed_path>
+    </backups>
+</clickhouse>
