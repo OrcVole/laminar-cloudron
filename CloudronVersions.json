@@ -2,6 +2,7 @@
   "stable": true,
   "versions": {
     "0.1.4": {
+      "creationDate": "2026-07-01T13:12:33.000Z",
       "manifest": {
         "id": "io.github.orcvole.laminar",
         "title": "Laminar",
@@ -58,6 +59,7 @@
         ],
         "dockerImage": "ghcr.io/orcvole/laminar-cloudron@sha256:729fae449afc99ddd6d37657797695754c7372509ff4ba844f017ef3ba7a8e8f"
       },
+      "publishState": "published",
       "ts": 1782911553000
     }
   }
