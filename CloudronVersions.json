@@ -57,7 +57,8 @@
           "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png"
         ],
         "dockerImage": "ghcr.io/orcvole/laminar-cloudron@sha256:729fae449afc99ddd6d37657797695754c7372509ff4ba844f017ef3ba7a8e8f"
-      }
+      },
+      "ts": 1782911553000
     }
   }
 }
