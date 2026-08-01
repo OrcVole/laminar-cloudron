@@ -12,7 +12,10 @@ phase-notes/
 upstream-lmnr/
 
 # --- Local-only planning + reference docs (box-specific hostnames/identities; never published) ---
-laminar-cloudron-foundation.md
+# Glob, not a fixed list: the 0.1.5 round found a second foundation doc
+# (laminar-backup-snapshot-foundation.md) sitting untracked but UNignored, i.e. one `git add .` away
+# from publishing a host name. Any new *foundation*.md is caught by default now.
+*foundation*.md
 cloudron-packaging-field-guide-*.md
 
 # --- Logo working files (logo.png is the tracked, canonical copy) ---

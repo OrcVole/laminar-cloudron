@@ -24,7 +24,10 @@ if [ -d "${QDUMP}" ] && [ -n "$(ls -A "${QDUMP}" 2>/dev/null)" ]; then
   else
     log "restoring Quickwit ${QDUMP} -> ${QW_STORE}"
     mkdir -p "${QW_STORE}"
-    rsync -a "${QDUMP}/" "${QW_STORE}/"
+    # -S mirrors the backup side (ADR 0012): keep Quickwit's pre-allocated 128 MiB WAL files sparse rather
+    # than writing 256 MiB of zeroes into the fresh persistentDir. Restores from a pre-0.1.5 backup, whose
+    # WAL was archived fully materialised, are re-sparsified by this.
+    rsync -aS "${QDUMP}/" "${QW_STORE}/"
     chown -R cloudron:cloudron "${QW_STORE}"
     log "Quickwit restore complete ($(du -sh "${QW_STORE}" 2>/dev/null | cut -f1))"
   fi

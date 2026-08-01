@@ -51,4 +51,31 @@
     <backups>
         <allowed_path>/app/data</allowed_path>
     </backups>
+
+    <!-- ADR 0012: bound the system.*_log tables. Upstream defaults keep them FOREVER, and on a busy single
+         node they dwarf the data we actually back up: measured after one month of uptime, system logs held
+         13.4 GiB across ~48,000 files while `default` (the whole Laminar trace store, and the only thing
+         BACKUP DATABASE default dumps) was under 2 MiB. backupCommand rsyncs the store before dumping it,
+         so that self-telemetry, none of which is dumped or restored, set the backup's cost.
+
+         Disabled outright: profiling/metric tables that only earn their keep when tuning a cluster. Their
+         sizes below are the measured one-month totals that motivated this. Removing the config element
+         stops the table being created; an already-created table stops being written but keeps its data on
+         disk, so an existing install also needs a one-off DROP (see ADR 0012). -->
+    <trace_log                     remove="1"/>  <!-- 11 GiB: query-profiler stack samples -->
+    <text_log                      remove="1"/>  <!-- 706 MiB: duplicates the server log we echo to stdout -->
+    <part_log                      remove="1"/>  <!-- 665 MiB: MergeTree part lifecycle -->
+    <metric_log                    remove="1"/>  <!-- 643 MiB: per-second metric snapshots -->
+    <asynchronous_metric_log       remove="1"/>  <!-- 451 MiB: per-second async metric snapshots -->
+    <background_schedule_pool_log  remove="1"/>  <!--  51 MiB: scheduler internals -->
+    <query_metric_log              remove="1"/>  <!-- per-query per-second metric samples -->
+    <processors_profile_log        remove="1"/>  <!-- per-processor query profiling -->
+    <asynchronous_insert_log       remove="1"/>  <!-- async inserts; Laminar inserts synchronously -->
+
+    <!-- Kept, because these are what an operator actually reads when this instance misbehaves, but capped so
+         they cannot become the previous problem. 3 days is comfortably longer than the nightly backup cycle
+         that would surface a fault. TTL is applied to existing tables on restart, so it also drains history
+         already on disk. -->
+    <query_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></query_log>
+    <error_log><ttl>event_date + INTERVAL 3 DAY DELETE</ttl></error_log>
 </clickhouse>

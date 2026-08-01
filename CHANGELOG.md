@@ -1,3 +1,14 @@
+[0.1.5]
+* Much faster backups: ClickHouse's internal diagnostic tables are no longer kept forever, so a backup now
+  costs what your trace data costs. On a one-month-old install those tables had grown to 13.4 GiB and were
+  being re-read every night to produce a 376 KB dump.
+* Backups no longer archive a quarter-gigabyte of empty space: Quickwit's pre-allocated write-ahead log is
+  copied as the sparse file it is, instead of being written out in full on every backup and restore.
+* Backups now leave a per-phase timing record in `/app/data/backup-timing.log`, so a slow backup can be
+  diagnosed from the backup itself.
+* Upgrading an existing install? See POSTINSTALL for the one-off command that reclaims the diagnostic-table
+  space already on disk; new writes stop either way.
+
 [0.1.4]
 * Hardened backups: the bundled ClickHouse and Quickwit stores now live on dedicated volumes and are captured
   by a consistent logical dump/restore, so automatic backups can't race live writes or abort mid-run.
