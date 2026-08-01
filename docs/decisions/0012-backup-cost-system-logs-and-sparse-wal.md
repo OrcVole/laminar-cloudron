@@ -149,6 +149,14 @@ trap so a failed run still records how far it got.
 - The residual risk is that some future ClickHouse version adds another on-by-default log table. The timing
   line in `/app/data/backup-timing.log` is what makes that visible early rather than a year later.
 
+## Reported upstream
+Defect 1 is not only ours. Every upstream compose file (`docker-compose.yml`, `-full`, `-local-build`,
+`-local-dev`, `-local-dev-full`) mounts a ClickHouse config into `users.d` only, setting a single profile
+option, so no `config.d` server-level bound is ever applied and every self-hoster inherits the same
+unbounded system logs. Filed as **[lmnr-ai/lmnr#2176](https://github.com/lmnr-ai/lmnr/issues/2176)** with
+the configuration block, the measurements, and both traps above. Defect 2 is ours alone: upstream does not
+snapshot Quickwit with rsync.
+
 ## Alternatives rejected
 - **Exclude the `system` database from the snapshot.** No stable path expression, and a partial store breaks
   the attach. Rejected in favour of bounding the store.
