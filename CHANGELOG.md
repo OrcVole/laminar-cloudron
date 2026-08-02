@@ -1,3 +1,11 @@
+[0.1.6]
+* Upstream Laminar 0.2.0 to 0.2.1. Sign-in and sign-up screens change upstream; Cloudron single
+  sign-on wiring is unchanged (same OIDC callback path), but confirm a fresh sign-in after updating.
+* Project API keys can now carry an expiry and an owning user. Existing keys are unaffected — the
+  new columns are nullable and default to no expiry.
+* Upstream drops the superseded Postgres `labeling_queue_items` table; the labelling queue has been
+  served from ClickHouse since before this release, so queue data itself is not in that table.
+
 [0.1.5]
 * Much faster backups: ClickHouse's internal diagnostic tables are no longer kept forever, so a backup now
   costs what your trace data costs. On a one-month-old install those tables had grown to 13.4 GiB and were

@@ -1,3 +1,5 @@
+<upstream>0.2.1</upstream>
+
 ## Laminar
 
 Laminar (`lmnr`) is an open-source observability platform for LLM applications and AI agents:
