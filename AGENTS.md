@@ -89,7 +89,7 @@ LITE upstream falls back to in-process Moka (cache), TokioMpsc (queue), and Mock
   `/app/code/app-server` so `./data` resolves.
 - **frontend (Next.js, musl-in-place):** copy the upstream `ghcr.io/lmnr-ai/frontend` standalone tree
   (`server.js`, `.next/standalone`→`/app/code/frontend`, `.next/static`, `public`, **`lib/db/migrations`
-  + `lib/clickhouse/migrations`**) AND the upstream **musl Node 26** + loader + lib closure (incl. whatever
+  - `lib/clickhouse/migrations`**) AND the upstream **musl Node 26** + loader + lib closure (incl. whatever
   `sharp`'s musl `.node` links — resolve with `ldd` at build) into `/opt/musl/lib` (registered in
   `/etc/ld-musl-x86_64.path`), installed as `node-musl`. Run `node-musl server.js` from
   `/app/code/frontend`. **No Prisma** here — that's the one Langfuse complication Laminar skips.

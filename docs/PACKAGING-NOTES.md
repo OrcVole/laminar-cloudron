@@ -10,6 +10,7 @@ Pointing genuine exporters at the endpoint both **validated core packaging decis
 concrete doc fixes** — the kind of feedback you only get from real clients.
 
 **Validated (decisions that held up under real clients):**
+
 - **Public, API-key-only ingest subdomain (no SSO).** SDKs and collectors cannot complete an interactive
   login, so the separate public ingest host protected by a per-project bearer key is *exactly* what let
   external apps send traces at all. Real-world confirmation of the auth topology.
@@ -22,6 +23,7 @@ concrete doc fixes** — the kind of feedback you only get from real clients.
   client's exact captured payload returned 200 and stored the span. The HTTP ingest path is solid.
 
 **Surfaced (concrete improvement now in the package docs):**
+
 - **"The endpoint is HTTPS-only; your exporter must speak TLS" guidance.** One gateway's OTLP export mode
   sends **plaintext HTTP to the `https` endpoint** (confirmed by capturing the bytes: no TLS handshake, the
   edge returns `400 — plain HTTP request was sent to HTTPS port`, and the request never reaches the app).

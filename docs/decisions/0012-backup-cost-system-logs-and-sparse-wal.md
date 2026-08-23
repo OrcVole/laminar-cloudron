@@ -3,6 +3,7 @@
 Date: 2026-08-01
 
 ## Status
+
 **Accepted + implemented + verified in production (ships in v0.1.5).** Two independent defects found by
 profiling a production nightly backup. Both are in this package, not upstream. Supersedes nothing; refines
 the backup path established by [ADR 0007](0007-clickhouse-backup-persistentdirs-triplet.md) and
@@ -35,6 +36,7 @@ post-fix production backup, into empty persistentDirs, in the shipped image:
   restore, so a restored install does not reacquire the problem.
 
 ## Context
+
 On a production install (one month of uptime, moderate ingestion) the `backupCommand` took **25 minutes 26
 seconds**. Cloudron's own file walk and the offsite upload accounted for about one minute of that; the rest
 was inside our script. The output it produced was 259 MB across 120 files, which made the run look
@@ -49,6 +51,7 @@ looked nothing like the output:
 | `/var/lib/clickhouse` | under 2 MiB of `default` | **14 GiB, 49,050 files** |
 
 ### Defect 1 — ClickHouse system logs were unbounded
+
 This package never configured the `system.*_log` tables, so upstream defaults applied: every table on,
 retained forever. Measured after one month, every one of the seven largest directories in the store was a
 system log table:
@@ -73,6 +76,7 @@ backup got slower every night.
 This is not a cold-start artefact. `trace_log` reached 11 GiB in a single month of ordinary operation.
 
 ### Defect 2 — rsync materialised Quickwit's sparse WAL
+
 Quickwit pre-allocates two 128 MiB write-ahead log files as sparse files:
 
 ```
@@ -132,6 +136,7 @@ inspecting the box rather than by reading a log. The script now writes a per-pha
 trap so a failed run still records how far it got.
 
 ## Consequences
+
 - The ClickHouse store stops growing without bound, which helps the running app and its disk footprint, not
   only the backup.
 - **Existing installs need a one-off drop.** Disabling a system log stops new writes; it does not remove
@@ -150,6 +155,7 @@ trap so a failed run still records how far it got.
   line in `/app/data/backup-timing.log` is what makes that visible early rather than a year later.
 
 ## Reported upstream
+
 Defect 1 is not only ours. Every upstream compose file (`docker-compose.yml`, `-full`, `-local-build`,
 `-local-dev`, `-local-dev-full`) mounts a ClickHouse config into `users.d` only, setting a single profile
 option, so no `config.d` server-level bound is ever applied and every self-hoster inherits the same
@@ -158,6 +164,7 @@ the configuration block, the measurements, and both traps above. Defect 2 is our
 snapshot Quickwit with rsync.
 
 ## Alternatives rejected
+
 - **Exclude the `system` database from the snapshot.** No stable path expression, and a partial store breaks
   the attach. Rejected in favour of bounding the store.
 - **Exclude Quickwit's `wal/` and `queues/`.** Would have fixed the 257 MB just as effectively and lost

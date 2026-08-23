@@ -3,6 +3,7 @@
 Date: 2026-06-30
 
 ## Status
+
 **Accepted + implemented (ships in v0.1.4 / image 0.2.0-7).** The cross-store skew was caught by the Phase 7
 under-load gate (the idle clone masked it, same as Code 48/76); the persistentDir + ordering fix is
 implemented and **validated 2× under load** — clones of mid-flush backups at 26k and 116k spans both showed
@@ -10,7 +11,9 @@ implemented and **validated 2× under load** — clones of mid-flush backups at 
 `/var/lib/quickwit` and the backup never aborts while splits flush.
 
 ## Context
+
 Quickwit is a **derived** full-text index over the ClickHouse spans. Two options for its backup:
+
 - **Rebuilt-from-CH** — don't back it up, reindex from CH on restore. **Infeasible**: Laminar's indexer only
   indexes spans as the app-server *publishes* them at ingestion; there is no batch "reindex from ClickHouse"
   path, so a restore couldn't repopulate the index.
@@ -21,21 +24,26 @@ at a *different instant* than the ClickHouse dump (`backupCommand`). The CH dump
 the Quickwit file-walk are **three non-atomic captures**, and under write load they diverge.
 
 ## The finding (under-load gate, measured — not assumed)
+
 A real `cloudron clone` of an under-load backup, counts read from the restored clone (synthetic data is
 1 span = 1 trace, so the counts are directly comparable):
+
 ```
 clone_ch_spans   = 111050   ← OLDEST  (backupCommand)
 clone_pg_traces  = 111912   ← +862    (PG addon-dump, ~3.5 s after CH)
 clone_qw_search  = 129450   ← +18400  (Quickwit file-walk, ~74 s after CH)
 ```
+
 So the **empirical capture order on this box/Cloudron is `CH < PG < Quickwit`**. Quickwit, captured ~74 s
 after the CH dump, ended up **18.4k spans AHEAD of CH** → search returns hits whose traces aren't in the
 restored CH (user-visible: a search result with no backing trace). The Quickwit copy itself wasn't *corrupt*
 (it booted clean) — the defect is the **timing skew**.
 
 ## Decision — bias the residual skew to the BENIGN direction
+
 The captures cannot be made atomic (no live pre-backup hook to quiesce ingestion). So instead of chasing
 zero skew, **bias which way the residual points**:
+
 - **Quickwit (search index) must LAG ClickHouse (trace store)**, never lead — `quickwit_search ≤ ch_spans`.
   A lag means "indexed slightly behind CH" (benign — those traces exist in CH, just not yet searchable; a real
   reindex/continued ingestion catches up). A lead means "search hit with no trace" (the bug above).
@@ -52,6 +60,7 @@ zero skew, **bias which way the residual points**:
   benign.
 
 ## Generalizable principle
+
 For any package bundling multiple stores backed up by **different mechanisms** (backupCommand vs addon-dump vs
 file-walk), the captures are non-atomic. **Measure the actual order on the actual box** (clone + compare each
 store's restored cut) — do NOT infer it from manifest field order or docs — then order the controllable
@@ -59,6 +68,7 @@ captures (those inside `backupCommand`) so the residual skew points benign relat
 direction (derived/child store should lag its source/parent, never lead).
 
 ## Acceptance gate (Phase 7; under load, 2–3×)
+
 - `quickwit_search ≤ ch_spans` — search never ahead of the trace store (`==` ideal, `<` benign lag OK,
   `>` = FAIL).
 - `ch_spans ≤ pg_traces` — no CH span without a PG trace row.
@@ -67,6 +77,7 @@ direction (derived/child store should lag its source/parent, never lead).
   excluded from the file-walk, #46).
 
 ## Port-back
+
 Langfuse (ClickHouse only, no Quickwit) does not need the Quickwit triplet. What ports is the **principle**:
 when a package has >1 store on different backup mechanisms, measure the capture order under load and bias the
 residual benign. Greenfield for Laminar (the first published version carries both persistentDirs; no in-place

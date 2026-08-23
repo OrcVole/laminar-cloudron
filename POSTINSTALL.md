@@ -62,4 +62,4 @@
   and starts a fresh one. The cap applies going forward; the renamed copies are what the last two lines
   remove.
 
-Project homepage: https://www.lmnr.ai — Docs: https://docs.lmnr.ai
+Project homepage: <https://www.lmnr.ai> — Docs: <https://docs.lmnr.ai>
