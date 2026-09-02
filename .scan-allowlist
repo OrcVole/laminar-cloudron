@@ -5,3 +5,10 @@
 # so the denylist matching it is correct behaviour and allowlisting it is the honest response.
 # Before 2026-08-09 meilisearch alone handled this, with bespoke code; now it is the shared mechanism.
 Most+github@OrcadianVole.com
+
+# Upstream ships a random-name word list at app-server/data/nouns.txt, and one of its entries is a
+# common English noun that is also a username on the build host, so the identity denylist matches
+# it. The file is vendored upstream content, published by lmnr-ai in their own repository, and says
+# nothing about this estate. Added 2026-09-02 while publishing 0.1.7. Same class as dbgate's
+# Material Design Icons entry (2026-08-19): a real English word colliding with an identity pattern.
+/app/code/app-server/data/nouns.txt

@@ -25,6 +25,11 @@ sleep 8
 $ENGINE run -d --name $APP --network $NET -p 15667:5667 -v $VOL:/app/data \
   -e CLOUDRON=1 \
   -e CLOUDRON_POSTGRESQL_URL="postgres://laminar:${PGPASS}@${PG}:5432/laminar" \
+  -e CLOUDRON_POSTGRESQL_USERNAME=laminar \
+  -e CLOUDRON_POSTGRESQL_PASSWORD="$PGPASS" \
+  -e CLOUDRON_POSTGRESQL_HOST="$PG" \
+  -e CLOUDRON_POSTGRESQL_PORT=5432 \
+  -e CLOUDRON_POSTGRESQL_DATABASE=laminar \
   -e CLOUDRON_APP_ORIGIN="http://localhost:15667" \
   -e LAMINAR_INGEST_FQDN="localhost:15667" \
   "$IMAGE" >/dev/null
@@ -45,8 +50,13 @@ for svc in clickhouse quickwit app-server frontend; do
 done
 
 # 3. services run as the unprivileged cloudron user
-nonroot=$($ENGINE exec $APP sh -c 'ps -eo user,comm 2>/dev/null | grep -E "clickhouse|quickwit|app-server|node" | grep -vc cloudron' 2>/dev/null || echo 1)
-[ "${nonroot:-1}" = 0 ] && ok "services run as cloudron" || bad "some service not running as cloudron ($nonroot non-cloudron)"
+# `grep -vc` prints 0 AND EXITS 1 when nothing matches, so `|| echo 1` fired on the success case and
+# nonroot became the two lines "0\n1" -- the assertion could only fail, and its message printed as a
+# truncated "(0". Measured 2026-09-02. Take the count from the first line and treat an empty capture
+# (exec failed, container gone) as a failure, which is the case the `|| echo 1` was really for.
+nonroot=$($ENGINE exec $APP sh -c 'ps -eo user,comm 2>/dev/null | grep -E "clickhouse|quickwit|app-server|node" | grep -vc cloudron' 2>/dev/null | head -1)
+[ -n "$nonroot" ] || nonroot=1
+[ "$nonroot" = 0 ] && ok "services run as cloudron" || bad "some service not running as cloudron ($nonroot non-cloudron)"
 
 # 4. AEAD_SECRET_KEY 64 hex + not in logs
 klen=$($ENGINE exec $APP sh -c '. /app/data/.secrets/secrets.env; printf %s "$AEAD_SECRET_KEY" | wc -c' 2>/dev/null)

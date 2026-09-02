@@ -1,3 +1,11 @@
+[0.1.7]
+
+- Update laminar 0.2.1 -> 0.2.3
+- Security: per-project rate limiting on the SQL and ingestion endpoints prevents unbounded data access and pipeline flooding; a fix prevents cross-project data access via a spoofed projectId in the request body
+- Breaking: traces_agg column types changed from bitmasks to enum arrays; new traces_static table introduced for static trace columns; all read paths migrated to the new tables; checkpoints pipeline now gated behind CHECKPOINTS_ENABLED env var (disabled by default); field renamed from p50_ms to avg_ms
+- Routine features and fixes across the release
+- No packaging changes: auth topology, workspace layout and secrets handling unchanged; base and built images digest-pinned
+
 [0.1.6]
 
 - Upstream Laminar 0.2.0 to 0.2.1. Sign-in and sign-up screens change upstream; Cloudron single

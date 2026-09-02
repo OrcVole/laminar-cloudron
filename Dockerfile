@@ -15,11 +15,11 @@
 #     keeps it on its native runtime.
 #   - clickhouse + quickwit: bundled binaries copied from pinned upstream images, bound to localhost.
 
-ARG LAMINAR_VERSION=0.2.1
+ARG LAMINAR_VERSION=0.2.3
 ARG RUST_VERSION=1.95.0
 
 # ----- pinned upstream sources (digests resolved 2026-06-30) -------------------------------------
-FROM ghcr.io/lmnr-ai/frontend:v0.2.1@sha256:b9b02b6508fa911f2e9eaed62b3fa358963b834b7f5f739c2481f29fe49b84de                            AS frontend
+FROM ghcr.io/lmnr-ai/frontend:v0.2.3@sha256:e0aeaaf5f5938b6c2ed711918881b575c88892a6ae74e608d72ac813b74db77f                            AS frontend
 # 25.12 (not 25.3): Laminar's CH migrations need dateTimeToUUIDv7 (absent in 25.3); still pre-26.3, which
 # upstream warns breaks the spans_v0 view. 25.12 is the version the upstream CLAUDE.md targets.
 FROM docker.io/clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6              AS clickhouse

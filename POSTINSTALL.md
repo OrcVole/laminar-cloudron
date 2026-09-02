@@ -3,7 +3,8 @@
 **First sign-in**
 
 - Open the app and create your account. With **Cloudron SSO (OIDC)** enabled, sign in with your Cloudron
-  account. With SSO disabled, sign-in is **passwordless local-email** — anyone who can reach the app can
+  account: **the button is labelled "Keycloak"**. That is Laminar's name for its generic OpenID Connect
+  slot, which this package points at Cloudron; it is the Cloudron sign-in, not a second identity system. With SSO disabled, sign-in is **passwordless local-email** — anyone who can reach the app can
   sign in, so keep SSO on (or otherwise restrict access) for a private instance.
 
 **Sending traces**
@@ -40,7 +41,7 @@
   enough to slow the app until the tables are gone. Treat the update and this command as one operation.
 - To reclaim it, once, after the update has been applied:
 
-  ```
+  ```bash
   cloudron exec --app <your-app> -- clickhouse-client --multiquery --query "
     DROP TABLE IF EXISTS system.trace_log SYNC;
     DROP TABLE IF EXISTS system.text_log SYNC;
