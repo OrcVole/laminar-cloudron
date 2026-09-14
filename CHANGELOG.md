@@ -1,3 +1,17 @@
+[0.2.0]
+
+- Upstream Laminar 0.2.3 to 0.2.5.
+- Workspace LLM profiles for self-hosted signal runs: configure LLM provider credentials in the UI and assign them to signals.
+- Signal versioning: new `version` column on signals and playgrounds, with a dedicated history table.
+- Project API Signal CRUD operations added.
+- CLI auth onboarding improvements (Approve as last step).
+- Clusters visualisation feature in the Runs tab.
+- Group-scoped content deduplication and signal events now appear on the traces table.
+- Cache and reasoning token columns added to spans.
+- Custom time ranges extended to 6 months.
+- Various UI polish fixes.
+- No packaging changes: auth topology, workspace layout and secrets handling unchanged.
+
 [0.1.7]
 
 - Update laminar 0.2.1 -> 0.2.3
