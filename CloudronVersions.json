@@ -244,6 +244,67 @@
             "creationDate": "Wed, 02 Sep 2026 21:11:01 GMT",
             "ts": 1788383461000,
             "publishState": "published"
+        },
+        "0.2.0": {
+            "manifest": {
+                "id": "io.github.orcvole.laminar",
+                "title": "Laminar",
+                "author": "OrcVole",
+                "tagline": "Open-source observability for LLM apps and AI agents",
+                "description": "`<upstream>0.2.5</upstream>\n\n## Laminar\n\nLaminar (`lmnr`) is an open-source observability platform for LLM applications and AI agents:\nOpenTelemetry-native tracing, evaluations, datasets, labelling queues, full-text span search, and SQL\naccess to all of your trace data.\n\nThis package runs the self-hosted **open-source (Apache-2.0)** Laminar stack as a single Cloudron app — the\nNext.js dashboard, the Rust ingestion/API server, and bundled ClickHouse (span analytics) and Quickwit\n(full-text search) — with PostgreSQL provided by the Cloudron addon.\n\n### What you get\n\n- **OpenTelemetry-native trace ingestion** over OTLP/HTTP, plus the Laminar Python/TypeScript SDKs.\n- **Trace & span explorer** with full-text search, a SQL editor, and dashboards.\n- **Evaluations, datasets, and labelling queues** for building and grading eval pipelines.\n- **Single sign-on** via the Cloudron OIDC addon (Better Auth), or passwordless local sign-in.\n- All trace data stays on your own server; nothing is sent to a third party.\n\n### Cloudron integration\n\nSign-in through Cloudron SSO (OIDC) when enabled; automatic backups of all state under `/app/data`;\none-click updates; per-project API keys for SDK and OpenTelemetry-collector ingestion on a dedicated\ningestion subdomain.\n",
+                "changelog": "- Upstream Laminar 0.2.3 to 0.2.5.\n- Workspace LLM profiles for self-hosted signal runs: configure LLM provider credentials in the UI and assign them to signals.\n- Signal versioning: new `version` column on signals and playgrounds, with a dedicated history table.\n- Project API Signal CRUD operations added.\n- CLI auth onboarding improvements (Approve as last step).\n- Clusters visualisation feature in the Runs tab.\n- Group-scoped content deduplication and signal events now appear on the traces table.\n- Cache and reasoning token columns added to spans.\n- Custom time ranges extended to 6 months.\n- Various UI polish fixes.\n- No packaging changes: auth topology, workspace layout and secrets handling unchanged.\n",
+                "icon": "file://logo.png",
+                "tags": [
+                    "observability",
+                    "tracing",
+                    "ai",
+                    "analytics"
+                ],
+                "version": "0.2.0",
+                "upstreamVersion": "0.2.5",
+                "healthCheckPath": "/sign-in",
+                "httpPort": 5667,
+                "httpPorts": {
+                    "LAMINAR_INGEST_FQDN": {
+                        "title": "Trace ingestion endpoint",
+                        "description": "OTLP/HTTP + REST trace ingestion (app-server :8000) on its own subdomain. Public — NOT behind Cloudron login; secured by per-project API keys (SDKs and OTLP collectors cannot complete an interactive login). Point your Laminar SDK / OTLP exporter baseUrl here.",
+                        "containerPort": 8000,
+                        "defaultValue": "laminar-ingest"
+                    }
+                },
+                "addons": {
+                    "localstorage": {},
+                    "postgresql": {},
+                    "oidc": {
+                        "loginRedirectUri": "/api/auth/callback/keycloak"
+                    }
+                },
+                "persistentDirs": [
+                    "/var/lib/clickhouse",
+                    "/var/lib/quickwit"
+                ],
+                "backupCommand": "/app/code/conf/backup-clickhouse.sh",
+                "restoreCommand": "/app/code/conf/restore-clickhouse.sh",
+                "memoryLimit": 4294967296,
+                "configurePath": "/",
+                "optionalSso": true,
+                "postInstallMessage": "## Laminar is installed 🎉\n\n**First sign-in**\n\n- Open the app and create your account. With **Cloudron SSO (OIDC)** enabled, sign in with your Cloudron\n  account: **the button is labelled \"Keycloak\"**. That is Laminar's name for its generic OpenID Connect\n  slot, which this package points at Cloudron; it is the Cloudron sign-in, not a second identity system. With SSO disabled, sign-in is **passwordless local-email** — anyone who can reach the app can\n  sign in, so keep SSO on (or otherwise restrict access) for a private instance.\n\n**Sending traces**\n\n- Your trace-ingestion endpoint is the **ingestion subdomain** (a separate subdomain from the dashboard,\n  chosen at install). Point your Laminar SDK or OTLP/HTTP exporter `baseUrl` there.\n- Create a project in the UI to obtain a **project API key**, and send it as the ingestion credential.\n- Ingestion is **OTLP/HTTP** for **traces** (`POST /v1/traces`). From an OpenTelemetry collector or an LLM\n  gateway, use the **HTTP/protobuf** exporter (not gRPC) and make sure it negotiates **TLS** to the `https`\n  endpoint. Metrics/logs exporters aren't accepted (a `/v1/metrics` POST just 404s harmlessly).\n- The endpoint is **HTTPS-only — your exporter must actually speak TLS.** Some OTLP exporters and LLM\n  gateways have a \"plaintext HTTP\" export mode that sends **cleartext even to an `https://` URL**; those get a\n  proxy **`400 — plain HTTP request was sent to HTTPS port`** and never reach the app. If your client can't do\n  real TLS to the endpoint, put a local **OTLP collector** in front as a TLS relay (exporter → collector in\n  plaintext → collector → `https` to the ingest endpoint with your API key).\n\n**Data & backups**\n\n- All state — PostgreSQL (addon), the bundled ClickHouse and Quickwit stores, and the encryption key — is\n  captured by Cloudron's automatic backups. The data-encryption key is generated once on first boot and\n  preserved across updates and restores, so existing encrypted values (stored API keys, provider secrets)\n  keep working. Do not reinstall fresh if you want to keep existing data.\n- Each backup leaves a per-phase timing line in `/app/data/backup-timing.log` (last 30 runs). Cloudron runs\n  the backup container with logging disabled, so this file is the only record of how long a backup took and\n  which phase spent the time.\n\n**Upgrading from 0.1.4 or earlier: reclaim the diagnostic-table space**\n\n- From 0.1.5, ClickHouse's internal diagnostic tables (`system.trace_log` and friends) are switched off or\n  capped, so they no longer grow without bound. Switching them off stops new writes but does **not** remove\n  what is already on disk, which on a months-old install can be many gigabytes.\n- **Run it promptly after the update, not days later.** The update stops new writes, but it also makes\n  ClickHouse re-open the existing backlog and merge it. On a large store that merge activity can be heavy\n  enough to slow the app until the tables are gone. Treat the update and this command as one operation.\n- To reclaim it, once, after the update has been applied:\n\n  ```bash\n  cloudron exec --app <your-app> -- clickhouse-client --multiquery --query \"\n    DROP TABLE IF EXISTS system.trace_log SYNC;\n    DROP TABLE IF EXISTS system.text_log SYNC;\n    DROP TABLE IF EXISTS system.part_log SYNC;\n    DROP TABLE IF EXISTS system.metric_log SYNC;\n    DROP TABLE IF EXISTS system.asynchronous_metric_log SYNC;\n    DROP TABLE IF EXISTS system.background_schedule_pool_log SYNC;\n    DROP TABLE IF EXISTS system.query_metric_log SYNC;\n    DROP TABLE IF EXISTS system.processors_profile_log SYNC;\n    DROP TABLE IF EXISTS system.asynchronous_insert_log SYNC;\n    DROP TABLE IF EXISTS system.query_log_0 SYNC;\n    DROP TABLE IF EXISTS system.error_log_0 SYNC;\"\n  ```\n\n- This touches only ClickHouse's own telemetry about itself. No trace, span, evaluation or dataset data\n  lives in the `system` database, and the tables are not recreated once the update is in place.\n- `system.query_log` and `system.error_log` are kept and capped at 3 days. The `_0` entries in the list are\n  your pre-update history: applying the cap is a structure change, so ClickHouse renames the old table aside\n  and starts a fresh one. The cap applies going forward; the renamed copies are what the last two lines\n  remove.\n\nProject homepage: <https://www.lmnr.ai> — Docs: <https://docs.lmnr.ai>\n",
+                "manifestVersion": 2,
+                "minBoxVersion": "9.1.0",
+                "website": "https://www.lmnr.ai",
+                "documentationUrl": "https://docs.lmnr.ai",
+                "packagerName": "OrcVole",
+                "packagerUrl": "https://github.com/OrcVole/laminar-cloudron",
+                "contactEmail": "Most+github@OrcadianVole.com",
+                "iconUrl": "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png",
+                "mediaLinks": [
+                    "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png"
+                ],
+                "dockerImage": "ghcr.io/orcvole/laminar-cloudron@sha256:3a83a1c10628d7d1f3538830c5c9abc2d208070adcb6eea581c12c068ece9436"
+            },
+            "creationDate": "Tue, 15 Sep 2026 09:54:40 GMT",
+            "ts": 1789466080000,
+            "publishState": "published"
         }
     }
 }
