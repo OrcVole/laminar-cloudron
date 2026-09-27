@@ -43,7 +43,7 @@ data stay **inside Cloudron's backup/restore surface**. A logical dump preserves
 The first design pointed `clickhouse local --path=/var/lib/clickhouse` straight at the store in the temp
 container. **It fails — at idle, not only under load** (verified on-box):
 
-```
+```text
 Code: 76. DB::Exception: Cannot lock file /var/lib/clickhouse/status.
            Another server instance in same directory is already running. (CANNOT_OPEN_FILE)
 ```
@@ -60,7 +60,7 @@ Symmetry would suggest restoring with `clickhouse local` too. **It doesn't work*
 clone`): `clickhouse local` RESTORE omits the implicit `default` database definition and lays out Atomic
 tables in a way the real `clickhouse-server` cannot start on —
 
-```
+```text
 Code: 48. DB::Exception: Data directory for default database exists, but metadata file does not.
 ```
 

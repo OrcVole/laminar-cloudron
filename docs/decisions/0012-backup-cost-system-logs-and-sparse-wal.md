@@ -56,7 +56,7 @@ This package never configured the `system.*_log` tables, so upstream defaults ap
 retained forever. Measured after one month, every one of the seven largest directories in the store was a
 system log table:
 
-```
+```text
 11 GiB   system.trace_log                  (3,141 files)
 706 MiB  system.text_log
 665 MiB  system.part_log
@@ -79,7 +79,7 @@ This is not a cold-start artefact. `trace_log` reached 11 GiB in a single month 
 
 Quickwit pre-allocates two 128 MiB write-ahead log files as sparse files:
 
-```
+```text
 wal/wal-00000000000000000000      apparent 128 MiB, allocated 0
 queues/wal-00000000000000000000   apparent 128 MiB, allocated 4 KiB
 ```

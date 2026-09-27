@@ -28,7 +28,7 @@ the Quickwit file-walk are **three non-atomic captures**, and under write load t
 A real `cloudron clone` of an under-load backup, counts read from the restored clone (synthetic data is
 1 span = 1 trace, so the counts are directly comparable):
 
-```
+```text
 clone_ch_spans   = 111050   ← OLDEST  (backupCommand)
 clone_pg_traces  = 111912   ← +862    (PG addon-dump, ~3.5 s after CH)
 clone_qw_search  = 129450   ← +18400  (Quickwit file-walk, ~74 s after CH)
