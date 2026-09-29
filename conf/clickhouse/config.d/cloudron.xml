@@ -72,6 +72,17 @@
     <processors_profile_log        remove="1"/>  <!-- per-processor query profiling -->
     <asynchronous_insert_log       remove="1"/>  <!-- async inserts; Laminar inserts synchronously -->
 
+    <!-- Added in 0.2.1 so the list matches upstream's own clickhouse-server-config.xml (lmnr#2190, shipped
+         in Laminar 0.2.3+). Measured empty on this package's workload with ClickHouse 25.12, so this is
+         belt and braces, not a fix. session_log and zookeeper_log are not created by default at all. -->
+    <query_thread_log              remove="1"/>  <!-- per-thread query rows; log_query_threads is off -->
+    <query_views_log               remove="1"/>  <!-- materialised-view runs; Laminar defines none -->
+    <session_log                   remove="1"/>  <!-- logins/logouts; one localhost user -->
+    <crash_log                     remove="1"/>  <!-- crash stack traces still reach stdout via <logger> -->
+    <opentelemetry_span_log        remove="1"/>  <!-- ClickHouse's own tracing spans -->
+    <zookeeper_log                 remove="1"/>  <!-- single node, no Keeper -->
+    <blob_storage_log              remove="1"/>  <!-- object-storage disk ops; no S3 disk here -->
+
     <!-- Kept, because these are what an operator actually reads when this instance misbehaves, but capped so
          they cannot become the previous problem. 3 days is comfortably longer than the nightly backup cycle
          that would surface a fault. TTL is applied to existing tables on restart, so it also drains history

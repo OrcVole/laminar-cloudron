@@ -163,6 +163,40 @@ unbounded system logs. Filed as **[lmnr-ai/lmnr#2176](https://github.com/lmnr-ai
 the configuration block, the measurements, and both traps above. Defect 2 is ours alone: upstream does not
 snapshot Quickwit with rsync.
 
+### Addendum, 2026-09-29: upstream fixed it; package 0.2.1 aligns with upstream's list
+
+Upstream accepted the report and shipped
+[lmnr-ai/lmnr#2190](https://github.com/lmnr-ai/lmnr/pull/2190) (merged 2026-08-10, in Laminar 0.2.3 and
+later): a `clickhouse-server-config.xml` mounted into `config.d` by the compose files, plus README upgrade
+steps. It keeps `query_log` and `error_log` on the same 3-day TTL we chose, and disables everything we
+disable **plus seven more**: `query_thread_log`, `query_views_log`, `session_log`, `crash_log`,
+`opentelemetry_span_log`, `zookeeper_log`, `blob_storage_log`.
+
+**Decision: keep our own `config.d/cloudron.xml` and add the seven**, rather than shipping upstream's file
+beside it. Upstream's file is mounted by their compose files, not built into their images, so nothing of
+theirs reaches our image; and two `config.d` files both setting the `query_log`/`error_log` TTLs would give
+the same fact two owners.
+
+**This is alignment, not a fix.** Measured locally on the pinned ClickHouse 25.12 image with this package's
+config, after query activity and `SYSTEM FLUSH LOGS`: the five of the seven that 25.12 creates by default
+were all present and **empty**, and `session_log` and `zookeeper_log` are not created at all. Laminar 0.2.5
+defines no materialised views in its ClickHouse migrations, so `query_views_log` has nothing to record, and
+`log_query_threads` is off by default, so `query_thread_log` has nothing either. With the edit, the seven are
+gone, `query_log` still records, and the server starts without configuration errors. On an existing install
+the seven tables, empty, stay on disk and stop being written; they need no clean-up.
+
+**Not changed: `backup_log`.** The nightly `BACKUP DATABASE` runs in `clickhouse local` against a temporary
+snapshot that is deleted afterwards, under its own `backups.xml` (`conf/backup-clickhouse.sh`), so the live
+server's `backup_log` is written only by a restore, once per restore. Adding a TTL to it would trigger the
+`_0` rename below for no measurable gain. 25.12 also creates `aggregated_zookeeper_log`,
+`delta_lake_metadata_log`, `iceberg_metadata_log`, `s3queue_log` and `zookeeper_connection_log` by default;
+nothing in this package writes to them, and they stay empty.
+
+Two clean-up details from the upstream thread, for anyone clearing a large pre-0.1.5 store by hand: a
+`TRUNCATE` or `DROP` fails with code 359 once the table is over 50 GB (`max_table_size_to_drop`), which
+`SETTINGS max_table_size_to_drop = 0` lifts for one statement; and TTL changes leave the old history in
+`<name>_0` suffixed tables, which ClickHouse no longer writes to and which can be dropped once inspected.
+
 ## Alternatives rejected
 
 - **Exclude the `system` database from the snapshot.** No stable path expression, and a partial store breaks

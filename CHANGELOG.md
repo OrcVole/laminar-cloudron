@@ -1,3 +1,10 @@
+[0.2.1]
+
+- ClickHouse now also switches off seven more of its internal diagnostic tables, so the package's list
+  matches the configuration Laminar itself adopted upstream (following our report). These tables were
+  already empty on this package, so this is tidying rather than a fix; nothing to do after updating.
+- No change to Laminar (still 0.2.5), sign-in, ingest or backups.
+
 [0.2.0]
 
 - Upstream Laminar 0.2.3 to 0.2.5.
