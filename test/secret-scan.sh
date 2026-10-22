@@ -5,7 +5,7 @@
 # only defence against the drift that produced twelve different gates is a version stamp that CI can
 # compare against estate/templates/secret-scan.sh. Bump it when this file changes; never edit a
 # package's copy in place.
-SCAN_VERSION=2026-08-09.4
+SCAN_VERSION=2026-10-22.1
 #
 # WHY ONE COPY. Before 2026-08-09 this script existed in three generations across 18 packages: ten
 # scanned the built image, eight scanned only the repo, and the denylists ranged from 5 patterns to
@@ -190,8 +190,15 @@ else
     local ex=""
     [[ "$mode" == "E" ]] && ex="${VENDOR_EXCLUDES[*]}"   # anon/shape only; F keeps full reach
     [[ "$mode" == "F" ]] && ex="--exclude-dir=.git"
-    "$CRI" run --rm -i --user 0 "${RUNFLAGS[@]}" --entrypoint /bin/bash "$IMAGE" \
-      -c "grep -rIn${mode}H $ex -f - $* 2>/dev/null" < "$pf"
+    local out
+    out="$("$CRI" run --rm -i --user 0 "${RUNFLAGS[@]}" --entrypoint /bin/bash "$IMAGE" \
+      -c "grep -rIn${mode}H $ex -f - $* 2>/dev/null; echo __SCAN_RAN__" < "$pf")"
+    # Fail closed (2026-10-22.1): if the container never ran (engine busy, out of memory, a storage lock),
+    # the grep printed nothing and the scan used to read that as clean. A missing marker is now a finding.
+    if [[ "$out" != *__SCAN_RAN__* ]]; then
+      echo "IMAGE SCAN DID NOT RUN ($CRI run failed, mode $mode): refusing to pass vacuously"; return 0
+    fi
+    printf '%s\n' "$out" | grep -v '^__SCAN_RAN__$' || true
   }
   CRIT_DIRS="/app /etc /root /home /usr/local /opt"
   emit anon  "$(drop_runtime "$(img E "$ANON"  $CRIT_DIRS)")"
@@ -218,15 +225,13 @@ else
   fi
 
   # --- the inert /etc/ssh host keys: whitelist BY EXACT PATH, with a VISIBLE COUNT ---
-  # cloudron/base ships three inert SSH host keys. No sshd runs in the app and the Dockerfile never
+  # cloudron/base 6.0.1 ships NO SSH host keys (5.0.0 shipped three); confirmed by listing /etc/ssh in the
+  # image, 2026-10-22 (field guide #266). Empty is the truth, not a loosened check. No sshd runs in the app and the Dockerfile never
   # touches ssh, so they are noise, not a leak. Allow ONLY these exact paths, pinned by sha256, and
   # print how many key files were found versus how many are pinned. A glob such as ssh_host_*_key
   # would silently pass a real future leak; a count that does not match fails loudly. Re-verify the
   # hashes whenever the base image digest changes.
   declare -A PINNED_SSH=(
-    [/etc/ssh/ssh_host_ecdsa_key]=677458f83d985da3fd7cdd208e90e4eac09da5be205425a5f96a6242dc985c33
-    [/etc/ssh/ssh_host_ed25519_key]=0c575ce8d9ba487b05cc473fad4b0650fb950181028e6ac19796f86f56f22a7a
-    [/etc/ssh/ssh_host_rsa_key]=ae0ea8087e90baf138d277ca52b6cf47b5010adc0e5bd84236713eee1b85de85
   )
   ssh_listing="$("$CRI" run --rm --user 0 "${RUNFLAGS[@]}" --entrypoint /bin/bash "$IMAGE" \
                   -c 'for f in /etc/ssh/ssh_host_*_key; do [ -e "$f" ] && sha256sum "$f"; done' 2>/dev/null)"
