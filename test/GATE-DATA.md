@@ -29,3 +29,10 @@ cloudron --server "$CLOUDRON_SERVER" exec --app "$APP" -- bash -c 'psql "$CLOUDR
 
 Choose a table the migrations do not drop, insert at least three rows that satisfy its constraints,
 then count. With a project key from the UI, `test/ingest.sh` drives real OTLP spans at the ingest domain.
+
+### Quickwit counts (0.4.0 and later)
+
+Count the files in the live search directory and in its backup copy after a burst of at least 2,000 spans, not on
+an idle install (field guide #329): `find /var/lib/quickwit | wc -l` and `find /app/data/quickwit-backup | wc -l`
+(the backup timing log also records `qw_files=`). After an in-place restore, `/var/lib/quickwit/quarantine-*` must
+exist and new spans must be searchable.

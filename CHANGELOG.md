@@ -1,3 +1,14 @@
+[0.4.0]
+
+- Upstream Laminar 0.2.5 to 0.3.2. Dependency security bumps: the web frontend (Next.js 16.3.3 to 16.3.8, sharp 0.35.5, postcss, source-map-js, the ClickHouse client) and several server crates (rmcp, lapin, resend-rs, fancy-regex). Laminar names no security advisory for this range (its GitHub repository lists none), so these are routine dependency updates rather than a response to a published vulnerability.
+- The search engine (Quickwit) moves from 0.8.2 to 0.9.1. **This is a one-way change.** The first start after updating migrates the search data directory in place, and it can never be opened by Quickwit 0.8 again. Take a Cloudron backup before updating. Existing indexed spans are kept. Traces are not affected: they live in ClickHouse.
+- **Restoring a backup in place now moves the search index aside.** Because Quickwit cannot read a directory a different version has migrated, an in-place restore moves the live search directory to `/var/lib/quickwit/quarantine-<time>` (kept 30 days, never deleted) and Quickwit starts empty. **Spans indexed before the restore are no longer searchable.** Laminar cannot rebuild the search index from ClickHouse, so that history is lost for search; the traces themselves are intact in ClickHouse and visible in the app. Restoring into a new app (clone) is unchanged: the backup's search snapshot is loaded. Rolling an install back to package 0.3.0 over a migrated search directory is not supported: Quickwit 0.8 will not start on it.
+- Quickwit's "commit on every ingest batch" mode (new in Laminar 0.3.0, on by default) is switched off, with a 30 second commit timeout: spans become searchable within about 30 seconds, and the search directory and the backup copy of it stay small in file count.
+- The step that created the search index definitions in the image is no longer needed: Laminar's own image now ships them (a build check enforces it). The Rust toolchain used to build the server is 1.96, as upstream's.
+- On first start the frontend also applies Laminar's new database migrations (six in ClickHouse, four in PostgreSQL), all additive.
+- The backup timing log now also records the number of files in the search snapshot.
+- Documentation: the post-install notes describe the migration and the restore behaviour, and the manual ClickHouse recipe now runs the restore script with `--clickhouse-only`.
+
 [0.3.0]
 
 - Base image cloudron/base 5.0.0 to 6.0.1 (Ubuntu 26.04): the operating system moves to Ubuntu 26.04, with current security updates including the removal of the compromised eMudhra emSign ECC Root CA - G3 from the trusted certificates. The Laminar server is rebuilt from source against the new system libraries (glibc 2.43, OpenSSL 3.5); Laminar itself is unchanged (still 0.2.5).

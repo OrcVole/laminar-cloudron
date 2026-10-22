@@ -15,15 +15,16 @@
 #     keeps it on its native runtime.
 #   - clickhouse + quickwit: bundled binaries copied from pinned upstream images, bound to localhost.
 
-ARG LAMINAR_VERSION=0.2.5
-ARG RUST_VERSION=1.95.0
+ARG LAMINAR_VERSION=0.3.2
+# Rust: the version upstream's 0.3.2 app-server/Dockerfile builds on (rust:1.96-slim-trixie).
+ARG RUST_VERSION=1.96.0
 
-# ----- pinned upstream sources (digests resolved 2026-09-14) -------------------------------------
-FROM ghcr.io/lmnr-ai/frontend:v0.2.5@sha256:255382b7d21aced22db7d75e4f2eefd8f22af9ba2715d83f07ba00cfd0822e16                            AS frontend
+# ----- pinned upstream sources (digests resolved 2026-09-14; frontend and quickwit 2026-10-22) -------------------------------------
+FROM ghcr.io/lmnr-ai/frontend:v0.3.2@sha256:b2e3f7875f28b9794f755a373d80d784dd2044b9f9666a3d8e6ccc8765bf7960                            AS frontend
 # 25.12 (not 25.3): Laminar's CH migrations need dateTimeToUUIDv7 (absent in 25.3); still pre-26.3, which
 # upstream warns breaks the spans_v0 view. 25.12 is the version the upstream CLAUDE.md targets.
 FROM docker.io/clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6              AS clickhouse
-FROM docker.io/quickwit/quickwit:v0.8.2@sha256:363ff56ce45614e46eba1c308e420f56a9f2fd8ab5788cbca0ec6b68a2e0ef92                        AS quickwit
+FROM docker.io/quickwit/quickwit:v0.9.1@sha256:3e0f079eb57dd5563f36a457e9a7a2963ff882316d6c77e3180ac3c59767a68f                        AS quickwit
 
 # =================================================================================================
 # app-server builder — compile the Rust binary on cloudron/base so it links the base's glibc 2.43.
@@ -75,6 +76,8 @@ COPY --from=frontend /lib/ld-musl-x86_64.so.1 /lib/ld-musl-x86_64.so.1
 RUN mkdir -p /opt/musl/lib
 COPY --from=frontend /usr/lib/libstdc++.so.6 /opt/musl/lib/libstdc++.so.6
 COPY --from=frontend /usr/lib/libgcc_s.so.1  /opt/musl/lib/libgcc_s.so.1
+# libatomic: node 26 in the 0.3.x frontend image needs it (0.2.5 did not); found by the node-musl build gate.
+COPY --from=frontend /usr/lib/libatomic.so.1 /opt/musl/lib/libatomic.so.1
 RUN printf '/opt/musl/lib\n' > /etc/ld-musl-x86_64.path
 COPY --from=frontend /usr/local/bin/node /usr/local/bin/node-musl
 
@@ -94,12 +97,9 @@ RUN rm -rf /app/code/frontend/.next/cache \
 COPY --from=app-server-builder /out/app-server /app/code/app-server/app-server
 COPY --from=app-server-builder /out/data       /app/code/app-server/data
 
-# Quickwit index configs. Upstream's frontend image never copies lib/quickwit/indexes into the standalone
-# tree, yet the frontend reads it (cwd-relative) on every boot and creates any missing index through
-# Quickwit's REST API (frontend/lib/quickwit/migrations.ts). Without the directory it logs "indexes
-# directory not found" and spans_v2 never exists. Taken from the same pinned tag the app-server is built
-# from, so the index schema always matches the binary. Idempotent upstream: existing indexes are skipped.
-COPY --from=app-server-builder /src/frontend/lib/quickwit/indexes /app/code/frontend/lib/quickwit/indexes
+# Quickwit index configs: upstream's frontend image has shipped lib/quickwit/indexes itself since 0.3.1
+# (PR #2537), so the COPY the package carried for 0.2.x and 0.3.0 is gone. The build gate in section 5
+# fails the build if a future upstream image loses them (spans_v2 would then never exist: no search).
 
 # -------------------------------------------------------------------------------------------------
 # 4. Bundled ClickHouse (one multicall binary + its /etc tree) and Quickwit (single binary + config).
@@ -131,6 +131,8 @@ RUN echo "== gate: app-server (linkage) ==" \
  && ldd /app/code/app-server/app-server 2>&1 | grep -qi 'not found' && { echo 'FATAL: app-server unresolved libs'; exit 1; } || echo 'app-server: ldd clean'
 RUN echo "== gate: clickhouse ==" && /usr/bin/clickhouse --version \
  && { ldd /usr/bin/clickhouse 2>&1 | grep -qi 'not found' && { echo 'clickhouse unresolved libs'; exit 1; } || true; }
+RUN echo "== gate: quickwit index definitions ==" \
+ && for f in spans_v2 events signal_events; do test -s /app/code/frontend/lib/quickwit/indexes/$f.yaml || { echo "FATAL: $f.yaml missing from the upstream frontend image"; exit 1; }; done
 RUN echo "== gate: quickwit ==" && /usr/bin/quickwit --version \
  && { ldd /usr/bin/quickwit 2>&1 | grep -qi 'not found' && { echo 'quickwit unresolved libs'; exit 1; } || true; }
 
@@ -147,6 +149,6 @@ LABEL org.opencontainers.image.title="Laminar for Cloudron" \
       org.opencontainers.image.description="Open-source Laminar (LLM/agent observability) packaged for Cloudron" \
       org.opencontainers.image.source="https://github.com/OrcVole/laminar-cloudron" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.version="0.1.0"
+      org.opencontainers.image.version="0.4.0"
 
 CMD [ "/app/code/start.sh" ]

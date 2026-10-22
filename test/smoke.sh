@@ -72,5 +72,11 @@ tz=$($ENGINE exec $APP sh -c '. /app/data/.secrets/secrets.env; curl -s "http://
 code=$($ENGINE exec $APP sh -c 'curl -s -m 5 -o /dev/null -w "%{http_code}" -X POST http://localhost:8000/v1/traces' 2>/dev/null || echo 000)
 { [ -n "$code" ] && [ "$code" != "000" ]; } && ok "app-server :8000 answers OTLP path (HTTP $code)" || bad "app-server :8000 unreachable"
 
+# 7. the Quickwit search indexes exist (frontend creates them at boot from lib/quickwit/indexes; 0.3.0 fix)
+for ix in spans_v2 events signal_events; do
+  code=$($ENGINE exec $APP sh -c "curl -s -m 5 -o /dev/null -w '%{http_code}' http://localhost:7280/api/v1/indexes/$ix" 2>/dev/null || echo 000)
+  [ "$code" = 200 ] && ok "Quickwit index $ix exists" || bad "Quickwit index $ix missing (HTTP $code)"
+done
+
 echo "=== smoke result: $fails failure(s) ==="
 exit $((fails > 0 ? 1 : 0))

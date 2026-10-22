@@ -39,7 +39,7 @@ trap emit_timing EXIT
 
 # ---- 1. Quickwit FIRST (so it is the OLDER capture; ADR 0011 benign-skew bias) ------------------
 if [ -d "${QW_STORE}" ] && [ -n "$(ls -A "${QW_STORE}" 2>/dev/null)" ]; then
-  log "snapshotting Quickwit ${QW_STORE} -> ${QDUMP}"
+  log "snapshotting Quickwit ${QW_STORE} -> ${QDUMP} (excl quarantine-*)"
   rm -rf "${QDUMP}.new" "${QDUMP}.old"
   qrc=0
   # -S (--sparse) is LOAD-BEARING, not a tidiness flag (ADR 0012). Quickwit pre-allocates two 128 MiB WAL
@@ -47,7 +47,7 @@ if [ -d "${QW_STORE}" ] && [ -n "$(ls -A "${QW_STORE}" 2>/dev/null)" ]; then
   # Plain `rsync -a` materialises those holes, turning a 292 KiB store into a 257 MiB snapshot of zeroes
   # that Cloudron then uploads offsite every night. Keep the WAL (it holds spans not yet indexed into a
   # split, so excluding it would lose data); just do not inflate it.
-  rsync -aS --delete "${QW_STORE}/" "${QDUMP}.new/" || qrc=$?
+  rsync -aS --delete --exclude='/quarantine-*' "${QW_STORE}/" "${QDUMP}.new/" || qrc=$?
   if [ "${qrc}" -ne 0 ] && [ "${qrc}" -ne 24 ]; then
     log "FATAL: Quickwit snapshot rsync failed (rc=${qrc})"; rm -rf "${QDUMP}.new"; exit "${qrc}"
   fi
@@ -59,6 +59,9 @@ else
   log "Quickwit store empty/absent — skipping its snapshot"
 fi
 mark quickwit
+# File counts (field guide #329: Cloudron's uploader holds every path of /app/data in memory). Logged to the
+# timing file so a busy install's growth is visible without reproducing it.
+TIMINGS="${TIMINGS}qw_files=$(find "${QDUMP}" 2>/dev/null | wc -l) "
 
 # ---- 2. ClickHouse SECOND (so it is the FRESHER capture) ----------------------------------------
 if [ ! -d "${CH_STORE}/store" ] && [ ! -d "${CH_STORE}/metadata" ]; then

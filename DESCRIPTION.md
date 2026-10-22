@@ -1,4 +1,4 @@
-`<upstream>0.2.5</upstream>
+`<upstream>0.3.2</upstream>
 
 ## Laminar
 

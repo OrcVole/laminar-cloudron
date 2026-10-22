@@ -29,11 +29,11 @@ wait_for "postgres"   pg_isready -h "${DATABASE_HOST}" -p "${DATABASE_PORT}"
 qw=0
 until curl -sf "http://localhost:7280/health/readyz" >/dev/null 2>&1; do
   qw=$((qw + 1))
-  [ "$qw" -ge 60 ] && { log "WARN: Quickwit not ready after 60s — starting WITHOUT span indexing (search degraded)"; break; }
+  [ "$qw" -ge 120 ] && { log "WARN: Quickwit not ready after 120s (the first start on Quickwit 0.9 migrates the old data directory) — starting WITHOUT span indexing (search degraded)"; break; }
   [ $((qw % 10)) -eq 1 ] && log "waiting for quickwit ..."
   sleep 1
 done
-[ "$qw" -lt 60 ] && log "quickwit ready"
+[ "$qw" -lt 120 ] && log "quickwit ready"
 
 log "dependencies ready — starting app-server (rest :${PORT} grpc :${GRPC_PORT} sse :${CONSUMER_PORT})"
 exec ./app-server

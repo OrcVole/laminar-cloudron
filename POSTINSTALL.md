@@ -44,16 +44,27 @@
   cloudron debug --app <your-app>                           # recovery mode on: supervisor and ClickHouse stay down
   cloudron start --app <your-app>                           # starts the container so exec works
   cloudron exec --app <your-app> -- find /var/lib/clickhouse -mindepth 1 -delete
-  cloudron exec --app <your-app> -- /app/code/conf/restore-clickhouse.sh    # must end with "RESTORE ok"
+  cloudron exec --app <your-app> -- /app/code/conf/restore-clickhouse.sh --clickhouse-only    # must end with "RESTORE ok"
   cloudron debug --app <your-app> --disable                 # recovery mode off: the app starts on the restored data
   ```
 
   Do not
   disable recovery mode before the script prints `RESTORE ok`.
-- **Quickwit is never restored in place.** Its directory is left as it is ("refusing to clobber"), so search
-  data keeps whatever it holds now, which may be newer than the backup. The script above does not change that.
-  To get Quickwit back to a backup's contents, restore the backup into a new app (a clone) instead, where the
-  directories start empty and the restore fills both stores.
+- **Quickwit (search) is reset by an in-place restore.** Quickwit 0.9 (package 0.4.0 and later) migrates its data
+  directory in place and Quickwit 0.8 can never open it again, so an in-place restore does not keep the live search
+  directory: on the next start it is moved to `/var/lib/quickwit/quarantine-<time>` (kept 30 days, then removed)
+  and Quickwit starts **empty**. **Spans indexed before the restore are no longer searchable, and Laminar has no
+  way to rebuild the search index from ClickHouse.** Traces, spans and everything else are in ClickHouse and
+  PostgreSQL and are unaffected; spans received after the restore are indexed normally. Restoring a backup into
+  a new app (a clone) is different: the directories start empty and the restore fills both stores, search included.
+
+**Upgrading to 0.4.0: the search engine migration cannot be undone**
+
+- The first start after the update migrates Quickwit's data (0.8 to 0.9) in place. Existing indexed spans are
+  kept, but **the directory can no longer be opened by Quickwit 0.8**. Take a Cloudron backup first.
+- **Rolling back to package 0.3.0 is not supported for search data**: 0.3.0's Quickwit will refuse to start on a
+  migrated directory (traces in ClickHouse are fine). Restore the pre-update backup into a new app instead.
+- Spans are searchable within about 30 seconds of arriving (commit timeout), not instantly.
 
 **Upgrading from 0.1.4 or earlier: reclaim the diagnostic-table space**
 

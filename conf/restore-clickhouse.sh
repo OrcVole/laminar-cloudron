@@ -9,7 +9,15 @@
 # local` (whose output the real server can't start on — Code 48). We bring up a transient server on the empty
 # persistentDir and RESTORE through it (allow_different_{table,database}_def absorb the normalized UUID-less
 # defs). Quickwit needs no server — it boots from the file copy directly.
+#
+# QUICKWIT (field guide #327, ADR 0013): Quickwit 0.9 migrates its data directory in place and 0.8 cannot
+# open it afterwards. In an in-place restore the persistentDir is populated, so this script does not touch
+# it; it drops a flag, and start.sh moves the live directory aside to a dated quarantine and lets Quickwit
+# start empty. Clone restores (empty directory) still rsync the snapshot in. The manual ClickHouse recipe
+# in POSTINSTALL runs this script by hand with --clickhouse-only, so it does not flag a second time.
 set -euo pipefail
+CLICKHOUSE_ONLY=0
+[ "${1:-}" = "--clickhouse-only" ] && CLICKHOUSE_ONLY=1
 CH_STORE=/var/lib/clickhouse
 QW_STORE=/var/lib/quickwit
 DUMP=/app/data/clickhouse-backup
@@ -18,19 +26,22 @@ SECRETS=/app/data/.secrets/secrets.env
 log() { echo "==> [restore] $*"; }
 
 # ---- Quickwit: plain rsync of the snapshot into its empty persistentDir (ADR 0011) -------------
-if [ -d "${QDUMP}" ] && [ -n "$(ls -A "${QDUMP}" 2>/dev/null)" ]; then
-  if [ -n "$(ls -A "${QW_STORE}" 2>/dev/null)" ]; then
-    log "Quickwit persistentDir already populated — refusing to clobber (no-op)"
-  else
-    log "restoring Quickwit ${QDUMP} -> ${QW_STORE}"
-    mkdir -p "${QW_STORE}"
-    # -S mirrors the backup side (ADR 0012): keep Quickwit's pre-allocated 128 MiB WAL files sparse rather
-    # than writing 256 MiB of zeroes into the fresh persistentDir. Restores from a pre-0.1.5 backup, whose
-    # WAL was archived fully materialised, are re-sparsified by this.
-    rsync -aS "${QDUMP}/" "${QW_STORE}/"
-    chown -R cloudron:cloudron "${QW_STORE}"
-    log "Quickwit restore complete ($(du -sh "${QW_STORE}" 2>/dev/null | cut -f1))"
-  fi
+if [ "${CLICKHOUSE_ONLY}" = 1 ]; then
+  log "--clickhouse-only: leaving Quickwit alone"
+elif [ -n "$(ls -A "${QW_STORE}" 2>/dev/null)" ]; then
+  mkdir -p "${QW_STORE}"
+  : > "${QW_STORE}/.restore-pending"
+  log "Quickwit persistentDir already populated (in-place restore): flagged; the next start moves it aside"
+  log "to ${QW_STORE}/quarantine-<time> and Quickwit starts empty (search history before the restore is lost)"
+elif [ -d "${QDUMP}" ] && [ -n "$(ls -A "${QDUMP}" 2>/dev/null)" ]; then
+  log "restoring Quickwit ${QDUMP} -> ${QW_STORE}"
+  mkdir -p "${QW_STORE}"
+  # -S mirrors the backup side (ADR 0012): keep Quickwit's pre-allocated 128 MiB WAL files sparse rather
+  # than writing 256 MiB of zeroes into the fresh persistentDir. Restores from a pre-0.1.5 backup, whose
+  # WAL was archived fully materialised, are re-sparsified by this.
+  rsync -aS "${QDUMP}/" "${QW_STORE}/"
+  chown -R cloudron:cloudron "${QW_STORE}"
+  log "Quickwit restore complete ($(du -sh "${QW_STORE}" 2>/dev/null | cut -f1))"
 else
   log "no Quickwit snapshot at ${QDUMP} — skipping"
 fi

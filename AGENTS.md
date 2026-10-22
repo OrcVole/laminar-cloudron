@@ -69,19 +69,19 @@ LITE upstream falls back to in-process Moka (cache), TokioMpsc (queue), and Mock
 ## Pinned upstream (to verify by `skopeo inspect` / source tag in Phase 2)
 
 - `docker.io/cloudron/base:6.0.1@sha256:7b1e729960c3ca312d26e886917ba89483241bba0219ff292858e10d9d5768ee` (Ubuntu 26.04)
-- Laminar source **git tag `v0.2.0`** (commit `f9f4954`) — Apache-2.0.
-  - app-server: Rust **edition 2024**, upstream builds on `rust:1.95-slim-trixie` (glibc 2.41) →
+- Laminar source **git tag `v0.3.2`** — Apache-2.0.
+  - app-server: Rust **edition 2024**, upstream builds on `rust:1.96-slim-trixie` (glibc 2.41) →
     **source-build on `cloudron/base`** (glibc 2.43) so the binary links the base. cargo-chef caching.
   - frontend: `node:26-alpine` (musl), `next build` standalone, **only native addon = `sharp` (musl)**.
 - ClickHouse **25.12** (`@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6`).
   **NOT 25.3** — 25.3 lacks `dateTimeToUUIDv7`, so CH migration `7_versioned-datasets.sql` fails on first
   boot (confirmed in the boot smoke). 25.12 is still **pre-26.3** (upstream warns 26.3 breaks `spans_v0`)
   and is the version the upstream CLAUDE.md targets.
-- Quickwit **v0.8.2** (`quickwit/quickwit:v0.8.2`), pin by digest. Spans index `spans_v2`.
+- Quickwit **v0.9.1** (`quickwit/quickwit:v0.9.1`), pin by digest. Spans index `spans_v2`. The 0.8 to 0.9 data migration is one-way; an in-place restore quarantines the live directory (ADR 0013).
 
 ## Build shapes (HYPOTHESIS — prove on the box; ADR 0003)
 
-- **app-server (Rust):** builder stage on `cloudron/base` installs Rust 1.95 (rustup), deps
+- **app-server (Rust):** builder stage on `cloudron/base` installs Rust 1.96 (rustup), deps
   `build-essential pkg-config libssl-dev protobuf-compiler libfontconfig1-dev libclang-dev`, `cargo-chef`,
   `cargo build --release --all` (default features). Runtime stage copies the `app-server` binary **+ its
   `data/` dir** (`adjectives.txt`/`nouns.txt`/`logo.png` — name generation, cwd-relative `./data`) onto the

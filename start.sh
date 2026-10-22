@@ -38,6 +38,32 @@ if [ "$(stat -c %U "${QW_STORE}" 2>/dev/null || echo x)" != cloudron ]; then
 else
   chown cloudron:cloudron "${QW_STORE}"
 fi
+# ------------------------------------------------------------------------------------------------
+# 1b. Quickwit restore safeguard (field guide #327; ADR 0013). Quickwit 0.9 migrates the data directory in
+#     place on first start and 0.8 can never open it again, and Cloudron leaves persistentDirs alone on an
+#     in-place restore, so a restored version could be started on a directory it cannot read. The
+#     restoreCommand (restore-clickhouse.sh) therefore drops a flag into the directory when it finds it
+#     populated at restore time. Seeing the flag, move everything aside into a dated quarantine inside the
+#     same mount (never deleted, kept 30 days) and let Quickwit start EMPTY. Search history from before the
+#     restore is lost: the index is derived but cannot be rebuilt from ClickHouse (ADR 0011). Traces are in
+#     ClickHouse and are untouched. A clone restores into an empty directory and writes no flag.
+# ------------------------------------------------------------------------------------------------
+QW_FLAG="${QW_STORE}/.restore-pending"
+if [ -f "${QW_FLAG}" ]; then
+  rm -f "${QW_FLAG}"
+  if [ -n "$(find "${QW_STORE}" -mindepth 1 -maxdepth 1 ! -name 'quarantine-*' -print -quit)" ]; then
+    QW_Q="${QW_STORE}/quarantine-$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "${QW_Q}"
+    find "${QW_STORE}" -mindepth 1 -maxdepth 1 ! -name 'quarantine-*' -exec mv -t "${QW_Q}" {} +
+    log "RESTORE: a backup was restored over this app. The live Quickwit directory was moved to ${QW_Q}"
+    log "RESTORE: (kept 30 days) and Quickwit starts empty. Search history from before the restore is not"
+    log "RESTORE: searchable; traces in ClickHouse are not affected. See POSTINSTALL."
+  else
+    log "RESTORE: flag found but the Quickwit directory is already empty; nothing to move"
+  fi
+fi
+find "${QW_STORE}" -mindepth 1 -maxdepth 1 -type d -name 'quarantine-*' -mtime +30 -exec rm -rf {} + 2>/dev/null || true
+
 # Drop any stale pre-persistentDir stores under /app/data (else they are backed up + race the syncer).
 rm -rf "${DATA}/clickhouse" "${DATA}/quickwit"
 chmod 0700 "${DATA}/.secrets"
@@ -102,6 +128,11 @@ export QW_LISTEN_ADDRESS="127.0.0.1"
 export QUICKWIT_SEARCH_URL="http://localhost:7280"
 export QUICKWIT_INGEST_URL="http://localhost:7281"
 export QUICKWIT_SPANS_INDEX_ID="spans_v2"
+# Force commit OFF (field guide #329): upstream 0.3.0 defaults QUICKWIT_FORCE_COMMIT to true, which makes
+# a split per ingest batch and floods /var/lib/quickwit and its backup copy with files. With it off, spans
+# become searchable when the commit timeout fires (30 s here; upstream default 60 s).
+export QUICKWIT_FORCE_COMMIT="false"
+export QUICKWIT_SPANS_V2_COMMIT_TIMEOUT_SECS="30"
 
 # frontend -> app-server (server-side; 8002 SSE stays internal)
 export BACKEND_URL="http://localhost:8000"
