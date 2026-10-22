@@ -31,6 +31,30 @@
   the backup container with logging disabled, so this file is the only record of how long a backup took and
   which phase spent the time.
 
+**Restoring a backup in place: ClickHouse needs a manual step**
+
+- An in-place restore (the Restore button, or `cloudron restore --app <your-app> --backup <backup-id>`) rolls
+  back PostgreSQL (accounts, projects, datasets) but **not ClickHouse**: the restore script refuses to write
+  into a ClickHouse directory that already holds data, so traces and spans keep their current contents.
+  **Emptying `/var/lib/clickhouse` on its own is not enough: ClickHouse then starts EMPTY and the trace data
+  is lost.** The sequence that works runs the restore script by hand while the app's own processes are down:
+
+  ```bash
+  cloudron restore --app <your-app> --backup <backup-id>    # rolls PostgreSQL back
+  cloudron debug --app <your-app>                           # recovery mode on: supervisor and ClickHouse stay down
+  cloudron start --app <your-app>                           # starts the container so exec works
+  cloudron exec --app <your-app> -- find /var/lib/clickhouse -mindepth 1 -delete
+  cloudron exec --app <your-app> -- /app/code/conf/restore-clickhouse.sh    # must end with "RESTORE ok"
+  cloudron debug --app <your-app> --disable                 # recovery mode off: the app starts on the restored data
+  ```
+
+  Do not
+  disable recovery mode before the script prints `RESTORE ok`.
+- **Quickwit is never restored in place.** Its directory is left as it is ("refusing to clobber"), so search
+  data keeps whatever it holds now, which may be newer than the backup. The script above does not change that.
+  To get Quickwit back to a backup's contents, restore the backup into a new app (a clone) instead, where the
+  directories start empty and the restore fills both stores.
+
 **Upgrading from 0.1.4 or earlier: reclaim the diagnostic-table space**
 
 - From 0.1.5, ClickHouse's internal diagnostic tables (`system.trace_log` and friends) are switched off or

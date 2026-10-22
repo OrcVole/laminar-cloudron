@@ -21,6 +21,7 @@ export HOSTNAME="0.0.0.0"
 export PORT="5667"
 
 wait_for "clickhouse" curl -sf "http://localhost:8123/ping"
+wait_for "quickwit"   curl -sf "http://localhost:7280/health/livez"   # the boot-time index creation needs it
 wait_for "postgres"   pg_isready -h "${DATABASE_HOST}" -p "${DATABASE_PORT}"
 
 log "dependencies ready — starting frontend on 0.0.0.0:${PORT} (runs PG + ClickHouse migrations on boot)"

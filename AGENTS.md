@@ -68,10 +68,10 @@ LITE upstream falls back to in-process Moka (cache), TokioMpsc (queue), and Mock
 
 ## Pinned upstream (to verify by `skopeo inspect` / source tag in Phase 2)
 
-- `cloudron/base:5.0.0@sha256:04fd70dbd8ad6149c19de39e35718e024417c3e01dc9c6637eaf4a41ec4e596c`
+- `docker.io/cloudron/base:6.0.1@sha256:7b1e729960c3ca312d26e886917ba89483241bba0219ff292858e10d9d5768ee` (Ubuntu 26.04)
 - Laminar source **git tag `v0.2.0`** (commit `f9f4954`) — Apache-2.0.
   - app-server: Rust **edition 2024**, upstream builds on `rust:1.95-slim-trixie` (glibc 2.41) →
-    **source-build on `cloudron/base`** (glibc 2.39) so the binary links the base. cargo-chef caching.
+    **source-build on `cloudron/base`** (glibc 2.43) so the binary links the base. cargo-chef caching.
   - frontend: `node:26-alpine` (musl), `next build` standalone, **only native addon = `sharp` (musl)**.
 - ClickHouse **25.12** (`@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6`).
   **NOT 25.3** — 25.3 lacks `dateTimeToUUIDv7`, so CH migration `7_versioned-datasets.sql` fails on first

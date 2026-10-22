@@ -6,7 +6,7 @@
 #
 # Build shapes (ADR 0003):
 #   - app-server (Rust, edition 2024): SOURCE-BUILT on cloudron/base. The prebuilt upstream image is
-#     debian:trixie-slim (glibc 2.41) and would NOT link on the base (glibc 2.39), so we compile here
+#     debian:trixie-slim (glibc 2.41) and would NOT have linked on the old 5.x base (glibc 2.39; base 6 has 2.43), so we compile here
 #     with cargo default features (NOT `signals` — it needs lmnr-private and won't build in OSS).
 #   - frontend (Next.js standalone): MUSL-IN-PLACE. The upstream image is node:26-alpine (musl); we run
 #     its musl Node + standalone tree UNCHANGED on the glibc base via an isolated musl loader pointed at
@@ -26,9 +26,9 @@ FROM docker.io/clickhouse/clickhouse-server:25.12@sha256:8a790dd3468db22b1d4e7b1
 FROM docker.io/quickwit/quickwit:v0.8.2@sha256:363ff56ce45614e46eba1c308e420f56a9f2fd8ab5788cbca0ec6b68a2e0ef92                        AS quickwit
 
 # =================================================================================================
-# app-server builder — compile the Rust binary on cloudron/base so it links the base's glibc 2.39.
+# app-server builder — compile the Rust binary on cloudron/base so it links the base's glibc 2.43.
 # =================================================================================================
-FROM cloudron/base:5.0.0@sha256:04fd70dbd8ad6149c19de39e35718e024417c3e01dc9c6637eaf4a41ec4e596c AS app-server-builder
+FROM docker.io/cloudron/base:6.0.1@sha256:7b1e729960c3ca312d26e886917ba89483241bba0219ff292858e10d9d5768ee AS app-server-builder
 ARG LAMINAR_VERSION
 ARG RUST_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
@@ -56,7 +56,7 @@ RUN ldd /out/app-server | grep -qi 'not found' && { echo 'FATAL: app-server unre
 # =================================================================================================
 # Final image
 # =================================================================================================
-FROM cloudron/base:5.0.0@sha256:04fd70dbd8ad6149c19de39e35718e024417c3e01dc9c6637eaf4a41ec4e596c
+FROM docker.io/cloudron/base:6.0.1@sha256:7b1e729960c3ca312d26e886917ba89483241bba0219ff292858e10d9d5768ee
 ARG LAMINAR_VERSION
 ENV LAMINAR_VERSION=${LAMINAR_VERSION}
 
@@ -93,6 +93,13 @@ RUN rm -rf /app/code/frontend/.next/cache \
 # -------------------------------------------------------------------------------------------------
 COPY --from=app-server-builder /out/app-server /app/code/app-server/app-server
 COPY --from=app-server-builder /out/data       /app/code/app-server/data
+
+# Quickwit index configs. Upstream's frontend image never copies lib/quickwit/indexes into the standalone
+# tree, yet the frontend reads it (cwd-relative) on every boot and creates any missing index through
+# Quickwit's REST API (frontend/lib/quickwit/migrations.ts). Without the directory it logs "indexes
+# directory not found" and spans_v2 never exists. Taken from the same pinned tag the app-server is built
+# from, so the index schema always matches the binary. Idempotent upstream: existing indexes are skipped.
+COPY --from=app-server-builder /src/frontend/lib/quickwit/indexes /app/code/frontend/lib/quickwit/indexes
 
 # -------------------------------------------------------------------------------------------------
 # 4. Bundled ClickHouse (one multicall binary + its /etc tree) and Quickwit (single binary + config).

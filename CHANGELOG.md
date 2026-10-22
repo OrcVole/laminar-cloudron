@@ -1,3 +1,10 @@
+[0.3.0]
+
+- Base image cloudron/base 5.0.0 to 6.0.1 (Ubuntu 26.04): the operating system moves to Ubuntu 26.04, with current security updates including the removal of the compromised eMudhra emSign ECC Root CA - G3 from the trusted certificates. The Laminar server is rebuilt from source against the new system libraries (glibc 2.43, OpenSSL 3.5); Laminar itself is unchanged (still 0.2.5).
+- Includes the 0.2.1 ClickHouse diagnostic-table tidy-up, which was never published separately.
+- Fixes span search, which returned nothing in 0.2.0 and earlier: the search index (`spans_v2`) was never created, because the index definitions Laminar creates it from were missing from the image. The index is now created on the first start after updating (and is left alone on later starts); no ClickHouse data is touched. Spans received before this update are not in the search index and will not appear in search: Laminar offers no reindex or backfill for spans. They remain stored and visible in traces. Spans received after the update are searchable.
+- Documentation: the post-install notes now give the exact steps for restoring a backup in place, including the manual ClickHouse step and the fact that search data (Quickwit) is not rolled back.
+
 [0.2.1]
 
 - ClickHouse now also switches off seven more of its internal diagnostic tables, so the package's list

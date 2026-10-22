@@ -7,7 +7,7 @@
   "changelog": "file://CHANGELOG.md",
   "icon": "file://logo.png",
   "tags": [ "observability", "tracing", "ai", "analytics" ],
-  "version": "0.2.1",
+  "version": "0.3.0",
   "upstreamVersion": "0.2.5",
   "healthCheckPath": "/sign-in",
   "httpPort": 5667,
@@ -42,5 +42,5 @@
   "contactEmail": "Most+github@OrcadianVole.com",
   "iconUrl": "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png",
   "mediaLinks": [ "https://raw.githubusercontent.com/OrcVole/laminar-cloudron/main/logo.png" ],
-  "dockerImage": "ghcr.io/orcvole/laminar-cloudron@sha256:3a83a1c10628d7d1f3538830c5c9abc2d208070adcb6eea581c12c068ece9436"
+  "dockerImage": "ghcr.io/orcvole/laminar-cloudron@sha256:19e2867ba140a7f44fc5efe4b600c926d90812ced39af98bf3a34cd249e18dca"
 }
